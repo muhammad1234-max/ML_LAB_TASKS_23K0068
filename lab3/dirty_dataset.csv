@@ -1,0 +1,11 @@
+ID,Name,Age,Gender,GPA,StudyHours,Target
+1,Ali,20.0,Male,3.2,2.0,1
+2,Sara,22.0,female,2.9,,0
+2,Sara,22.0,F,2.9,3.0,0
+3,Hamza,999.0,M,3.5,15.0,1
+4,Aisha,19.0,Female,,4.0,1
+5,Omar,25.0,male,4.5,2.0,1
+6,Zara,,M,3.1,1.0,0
+7,Ali,23.0,Male,2.7,40.0,0
+8,Sara,22.0,Female,2.9,,0
+9,,21.0,Unknown,3.0,3.0,0

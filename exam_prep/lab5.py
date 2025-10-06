@@ -967,5 +967,308 @@ print(results_df)
 # ensemble_results = ensemble_comparison()
 
 
+# -----------------------------
+# Voting Classifier Task (Heart Dataset)
+# -----------------------------
+
+# Import required libraries
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+from sklearn.model_selection import train_test_split, cross_val_score
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.ensemble import RandomForestClassifier, VotingClassifier
+from sklearn.metrics import accuracy_score
+from sklearn.preprocessing import StandardScaler
+
+# Try to import XGBoost
+try:
+    from xgboost import XGBClassifier
+    XGB_AVAILABLE = True
+except Exception:
+    from sklearn.ensemble import GradientBoostingClassifier
+    XGB_AVAILABLE = False
+
+# -----------------------------
+# Step 1 — Load Dataset
+# -----------------------------
+FILEPATH = "dataset.csv"   # <-- Replace with your actual dataset file (same as Task 1)
+df = pd.read_csv(FILEPATH)
+
+# Step 2 — Select features (restecg, oldpeak) and target
+X = df[["restecg", "oldpeak"]]
+y = df["target"]
+
+# Optional scaling for distance-based models (KNN)
+scaler = StandardScaler()
+X_scaled = scaler.fit_transform(X)
+
+# Train/test split (80/20)
+X_train, X_test, y_train, y_test = train_test_split(
+    X_scaled, y, test_size=0.2, random_state=0, stratify=y
+)
+
+# -----------------------------
+# Step 3 — Define individual models
+# -----------------------------
+dt = DecisionTreeClassifier(random_state=0)
+knn = KNeighborsClassifier(n_neighbors=5)
+rf = RandomForestClassifier(n_estimators=100, random_state=0)
+xgb = XGBClassifier(use_label_encoder=False, eval_metric='logloss', random_state=0) if XGB_AVAILABLE else GradientBoostingClassifier(random_state=0)
+
+# -----------------------------
+# Step 4 — Create Voting Classifiers (hard and soft)
+# -----------------------------
+estimators = [('DecisionTree', dt), ('KNN', knn), ('RandomForest', rf), ('XGBoost', xgb)]
+
+# Hard Voting (majority voting)
+voting_hard = VotingClassifier(estimators=estimators, voting='hard')
+
+# Soft Voting (averages probabilities)
+voting_soft = VotingClassifier(estimators=estimators, voting='soft')
+
+# -----------------------------
+# Step 5 — Train both models and compare accuracy
+# -----------------------------
+voting_hard.fit(X_train, y_train)
+voting_soft.fit(X_train, y_train)
+
+y_pred_hard = voting_hard.predict(X_test)
+y_pred_soft = voting_soft.predict(X_test)
+
+acc_hard = accuracy_score(y_test, y_pred_hard)
+acc_soft = accuracy_score(y_test, y_pred_soft)
+
+print(f"Hard Voting Accuracy: {acc_hard:.4f}")
+print(f"Soft Voting Accuracy: {acc_soft:.4f}")
+
+best_voting_type = "Soft" if acc_soft > acc_hard else "Hard"
+print(f"\n✅ Best Voting Type: {best_voting_type}")
+
+# -----------------------------
+# Step 6 — Check best weights for models
+# -----------------------------
+# Weights correspond to the importance given to each classifier in the voting
+weight_options = [
+    (1, 1, 1, 1),
+    (2, 1, 1, 1),
+    (1, 2, 1, 1),
+    (1, 1, 2, 1),
+    (1, 1, 1, 2),
+    (2, 2, 1, 1),
+    (1, 2, 2, 1),
+    (1, 1, 2, 2)
+]
+
+results = []
+
+for w in weight_options:
+    vc = VotingClassifier(estimators=estimators, voting='soft', weights=w)
+    vc.fit(X_train, y_train)
+    y_pred = vc.predict(X_test)
+    acc = accuracy_score(y_test, y_pred)
+    results.append((w, acc))
+
+results_df = pd.DataFrame(results, columns=["Weights (DT, KNN, RF, XGB)", "Accuracy"])
+results_df = results_df.sort_values(by="Accuracy", ascending=False).reset_index(drop=True)
+print("\nAccuracy for different weight combinations:")
+print(results_df)
+
+best_weights = results_df.iloc[0]["Weights (DT, KNN, RF, XGB)"]
+print(f"\n🎯 Best Weights for Soft Voting: {best_weights}")
+
+# -----------------------------
+# Step 7 — Bias-Variance Tradeoff Visualization
+# -----------------------------
+# We'll vary model complexity by changing the number of estimators in RandomForest & XGBoost
+
+rf_estimators = [10, 50, 100, 200]
+train_acc, test_acc = [], []
+
+for n in rf_estimators:
+    rf_temp = RandomForestClassifier(n_estimators=n, random_state=0)
+    xgb_temp = XGBClassifier(n_estimators=n, eval_metric='logloss', random_state=0) if XGB_AVAILABLE else GradientBoostingClassifier(n_estimators=n, random_state=0)
+    vc_temp = VotingClassifier(
+        estimators=[
+            ('DecisionTree', dt),
+            ('KNN', knn),
+            ('RandomForest', rf_temp),
+            ('XGBoost', xgb_temp)
+        ],
+        voting='soft',
+        weights=best_weights
+    )
+    vc_temp.fit(X_train, y_train)
+    train_acc.append(vc_temp.score(X_train, y_train))
+    test_acc.append(vc_temp.score(X_test, y_test))
+
+plt.figure(figsize=(8, 5))
+plt.plot(rf_estimators, train_acc, marker='o', label='Training Accuracy')
+plt.plot(rf_estimators, test_acc, marker='o', label='Testing Accuracy')
+plt.title("Bias–Variance Tradeoff (Voting Classifier)")
+plt.xlabel("Number of Trees (Random Forest/XGBoost)")
+plt.ylabel("Accuracy")
+plt.legend()
+plt.grid(True)
+plt.show()
+
+
+
+
+# #labtask3
+# Use the Same dataset as in Task 1
+# ● Extract Only two Attributes with independent variable to analyze your results (restEcg
+# and Chol)
+# ● Now train a Voting Classifier using (Random Forest and Adaboost)
+# ● Plot the training and testing accuracy of individual Random Forest and XGBoost +
+# Accuracy graph of Voting Ensemble Technique as well.
+
+# ===========================================
+# TASK 3 — Voting Classifier (RandomForest + AdaBoost)
+# ===========================================
+
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+from sklearn.model_selection import train_test_split
+from sklearn.ensemble import RandomForestClassifier, AdaBoostClassifier, VotingClassifier
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.metrics import accuracy_score
+from sklearn.preprocessing import StandardScaler
+import sklearn
+
+# -----------------------------
+# 1️⃣ Load Dataset
+# -----------------------------
+FILEPATH = "dataset.csv"   # <-- Replace with your dataset file (same one used in Task 1)
+df = pd.read_csv(FILEPATH)
+
+# -----------------------------
+# 2️⃣ Select features and target
+# -----------------------------
+X = df[["restecg", "chol"]]   # Independent variables
+y = df["target"]               # Dependent variable
+
+# Optional scaling — helps boosting stability slightly
+scaler = StandardScaler()
+X_scaled = scaler.fit_transform(X)
+
+# Train/Test split (80/20)
+X_train, X_test, y_train, y_test = train_test_split(
+    X_scaled, y, test_size=0.2, random_state=0, stratify=y
+)
+
+# -----------------------------
+# 3️⃣ Define Models
+# -----------------------------
+rf = RandomForestClassifier(n_estimators=100, random_state=0)
+
+# ✅ FIX: Handle AdaBoost compatibility across scikit-learn versions
+ada_kwargs = {
+    "n_estimators": 100,
+    "random_state": 0
+}
+
+# Use correct argument name based on sklearn version
+if sklearn.__version__ >= "1.2":
+    ada_kwargs["estimator"] = DecisionTreeClassifier(max_depth=3)
+else:
+    ada_kwargs["base_estimator"] = DecisionTreeClassifier(max_depth=3)
+
+ada = AdaBoostClassifier(**ada_kwargs)
+
+# -----------------------------
+# 4️⃣ Train Individual Models
+# -----------------------------
+rf.fit(X_train, y_train)
+ada.fit(X_train, y_train)
+
+# Predictions
+y_pred_rf = rf.predict(X_test)
+y_pred_ada = ada.predict(X_test)
+
+# Accuracy scores
+rf_train_acc = rf.score(X_train, y_train)
+rf_test_acc = rf.score(X_test, y_test)
+ada_train_acc = ada.score(X_train, y_train)
+ada_test_acc = ada.score(X_test, y_test)
+
+print("Random Forest -> Train Accuracy:", round(rf_train_acc, 4), "| Test Accuracy:", round(rf_test_acc, 4))
+print("AdaBoost      -> Train Accuracy:", round(ada_train_acc, 4), "| Test Accuracy:", round(ada_test_acc, 4))
+
+# -----------------------------
+# 5️⃣ Voting Classifier (Soft Voting)
+# -----------------------------
+voting = VotingClassifier(
+    estimators=[('RandomForest', rf), ('AdaBoost', ada)],
+    voting='soft'
+)
+
+voting.fit(X_train, y_train)
+y_pred_vote = voting.predict(X_test)
+
+vote_train_acc = voting.score(X_train, y_train)
+vote_test_acc = voting.score(X_test, y_test)
+
+print("\nVoting Ensemble -> Train Accuracy:", round(vote_train_acc, 4), "| Test Accuracy:", round(vote_test_acc, 4))
+
+# -----------------------------
+# 6️⃣ Plot Accuracies (Individual + Ensemble)
+# -----------------------------
+models = ['Random Forest', 'AdaBoost', 'Voting Ensemble']
+train_accs = [rf_train_acc, ada_train_acc, vote_train_acc]
+test_accs  = [rf_test_acc,  ada_test_acc,  vote_test_acc]
+
+plt.figure(figsize=(8, 5))
+x = np.arange(len(models))
+bar_width = 0.35
+
+plt.bar(x - bar_width/2, train_accs, width=bar_width, label='Training Accuracy', color='skyblue')
+plt.bar(x + bar_width/2, test_accs, width=bar_width, label='Testing Accuracy', color='lightgreen')
+
+for i in range(len(models)):
+    plt.text(x[i]-0.25, train_accs[i]+0.01, f"{train_accs[i]:.2f}")
+    plt.text(x[i]+0.05, test_accs[i]+0.01, f"{test_accs[i]:.2f}")
+
+plt.xticks(x, models)
+plt.ylabel('Accuracy')
+plt.title('Training & Testing Accuracy Comparison\n(RandomForest, AdaBoost, and Voting Ensemble)')
+plt.legend()
+plt.tight_layout()
+plt.show()
+
+# -----------------------------
+# 7️⃣ Accuracy Trend Graph (Voting Ensemble)
+# -----------------------------
+n_estimators_range = [10, 30, 50, 70, 100, 150, 200]
+ensemble_train_acc, ensemble_test_acc = [], []
+
+for n in n_estimators_range:
+    # Version-safe AdaBoost for loop
+    if sklearn.__version__ >= "1.2":
+        ada_temp = AdaBoostClassifier(estimator=DecisionTreeClassifier(max_depth=3), n_estimators=n, random_state=0)
+    else:
+        ada_temp = AdaBoostClassifier(base_estimator=DecisionTreeClassifier(max_depth=3), n_estimators=n, random_state=0)
+    
+    rf_temp = RandomForestClassifier(n_estimators=100, random_state=0)
+    voting_temp = VotingClassifier(estimators=[('RF', rf_temp), ('ADA', ada_temp)], voting='soft')
+    voting_temp.fit(X_train, y_train)
+    ensemble_train_acc.append(voting_temp.score(X_train, y_train))
+    ensemble_test_acc.append(voting_temp.score(X_test, y_test))
+
+plt.figure(figsize=(8, 5))
+plt.plot(n_estimators_range, ensemble_train_acc, marker='o', label='Training Accuracy')
+plt.plot(n_estimators_range, ensemble_test_acc, marker='o', label='Testing Accuracy')
+plt.xlabel('Number of AdaBoost Estimators')
+plt.ylabel('Accuracy')
+plt.title('Voting Ensemble Accuracy vs AdaBoost Complexity (Bias–Variance Trend)')
+plt.legend()
+plt.grid(True)
+plt.show()
 
 

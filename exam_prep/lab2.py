@@ -295,3 +295,237 @@ selected_features = X.columns[selector.get_support()]
 print("Selected Features (Tree-based):", selected_features.tolist())
 
 
+
+#lab tasks
+
+# A. Download the dataset and explore how to merge these dataset
+# B. Combine dataset Lab2 D1A with Lab2 D1B in such a way that it doesn’t contain any
+# duplicate column. The resultant dataset consist of these columns and the final shape will be
+
+# C. Combine dataset Lab2 D1A with Lab2 D1C using merge method to extract similar records
+# in a new Dataframe “comboAC” having 4221333 records
+
+
+import pandas as pd
+
+D1A = pd.read_csv("Lab2 D1A.csv")
+D1B = pd.read_csv("Lab2 D1B.csv")
+D1C = pd.read_csv("Lab2 D1C.csv")
+
+#printing info abt the datasets
+print("Shape of D1A:", D1A.shape)
+print("Shape of D1B:", D1B.shape)
+print("Shape of D1C:", D1C.shape)
+
+#Combining D1A and D1B without duplicate columns
+combined_AB = pd.concat([D1A, D1B.loc[:, ~D1B.columns.isin(D1A.columns)]], axis=1)
+print("Combined AB shape:", combined_AB.shape)
+
+#Merging D1A with D1C for similar records (inner join)
+comboAC = pd.merge(D1A, D1C, on="county", how="inner")  
+print("ComboAC shape:", comboAC.shape)
+
+
+# A. Customized you own dataset with the name “customizedData”, add at least one attribute
+# that should be similar to Lab2 D1A, Lab2 D1B, Lab2 D1C dataset , now add 3 attributes
+# of Size (small, ,medium, and high), cardinal direction ( North, South, East and West) ,
+# Timings (full time , part time) and add 2 attributes of your own choice, one attribute should
+# be categorical and one should be continuous.
+# B. Merge “customizedData” with Lab2 D1A, Lab2 D1B, Lab2 D1C and produce a resultand
+# dataset with the name of “modifiedData” and explore/ analyze its number of records and
+# features before and after merging with the technique of similar records joining.
+
+import pandas as pd
+import numpy as np
+
+
+D1A = pd.read_csv("Lab2 D1A.csv")
+
+#customizing the dataset by adding attributes
+customizedData = pd.DataFrame({
+    "fid": D1A["fid"],
+    "Size": np.random.choice(["Small", "Medium", "High"], len(D1A)),
+    "Direction": np.random.choice(["North", "South", "East", "West"], len(D1A)),
+    "Timing": np.random.choice(["Full-time", "Part-time"], len(D1A)),
+    "CategoryAttr": np.random.choice(["A", "B", "C"], len(D1A)),  # categorical with alphabets
+    "ContinuousAttr": np.random.randn(len(D1A)) * 100             # continuous with random numbers
+})
+
+print("Customized dataset shape:", customizedData.shape)
+
+print("D1A columns:", D1A.columns.tolist())
+print("customizedData columns:", customizedData.columns.tolist())
+
+
+#Merging with D1A
+modifiedData = pd.merge(D1A, customizedData, on="fid", how="inner")
+print("Modified dataset shape:", modifiedData.shape)
+
+
+# How to organize your code (Create a Text block for Importing Libraries in next cell import
+# required library now Create a Heading for Data Preprocessing and the add a new cell for Data
+# analysis. Create headings for each cell)
+# A. Download the dataset from Here
+# B. Import your dataset in Colab or Jupyter notebook
+# C. Calculate the correlation between these variables,Var3,Var38,Var15,
+# imp_op_var39_comer_ult1
+# D. Check whether the data is linear or not and write a brief explanation what you
+# have analyzed in text cell
+# E. Check whether the data contain any missing record, if yes then perform imputation using
+# an average method.
+# F. In your dataset, you have some interesting variables. Think of multi-variable research
+# questions that you can explore with these data and explore. You need to do at least 5
+# explorations that include data visualizations, numerical summary.
+# G. Find out the unique category in target variable and check whether your dataset is balanced
+# or not.
+# H. If dataset is not balanced, then handle your dataset and balance it using Up sampling
+# I. Find out the total number of features and records and perform feature selection using
+# Pearson Correlation having threshold equal to 65%.
+# J. Make a copy of your dataset and perform feature selection other than Pearson and Variance
+# threshold.
+
+import pandas as pd
+import seaborn as sns
+import matplotlib.pyplot as plt
+from sklearn.impute import SimpleImputer
+from sklearn.utils import resample
+from sklearn.feature_selection import mutual_info_classif
+
+dataset = pd.read_csv("train.csv")  
+
+#Correlations between selected variables
+corr_vars = dataset[["var3", "var38", "var15", "imp_op_var39_comer_ult1"]]
+print("Correlation Matrix:\n", corr_vars.corr())
+
+#linearity check with scatter plots + heatmap
+sns.pairplot(corr_vars)
+plt.show()
+sns.heatmap(corr_vars.corr(), annot=True, cmap="coolwarm")
+plt.show()
+
+#handling missing values with mean imputation
+imputer = SimpleImputer(strategy="mean")
+dataset_imputed = pd.DataFrame(imputer.fit_transform(dataset), columns=dataset.columns)
+
+#example explorations
+sns.histplot(dataset_imputed["var38"], bins=30, kde=True)
+plt.show()
+
+sns.boxplot(x=dataset_imputed["var3"], y=dataset_imputed["var38"])
+plt.show()
+
+sns.scatterplot(x=dataset_imputed["var15"], y=dataset_imputed["var38"], hue=dataset_imputed["var3"])
+plt.show()
+
+#checking class balance
+print("Target distribution:\n", dataset["TARGET"].value_counts())
+
+#handling imbalance with upsampling
+majority = dataset[dataset["TARGET"] == 0]
+minority = dataset[dataset["TARGET"] == 1]
+minority_upsampled = resample(minority, replace=True, n_samples=len(majority), random_state=42)
+balanced_dataset = pd.concat([majority, minority_upsampled])
+print("Balanced dataset shape:", balanced_dataset.shape)
+
+#feature selection with Pearson correlation
+cor_matrix = balanced_dataset.corr()
+selected_features = cor_matrix.index[abs(cor_matrix["TARGET"]) > 0.65]
+print("Features selected (Pearson > 65%):", selected_features)
+
+#feature selection using Mutual Information
+X = balanced_dataset.drop("TARGET", axis=1).fillna(0)
+y = balanced_dataset["TARGET"]
+mi_scores = mutual_info_classif(X, y)
+mi_series = pd.Series(mi_scores, index=X.columns).sort_values(ascending=False)
+print("Top MI Features:\n", mi_series.head())
+
+
+#using a scatterplot we can analyze that the data in the train.csv dataset is not linear as the data points do not follow the 
+#pattern of a straight line or any semblance of it as well
+
+
+
+# A. Create a survey form (ask for the approval in order to avoid duplicate content) , ask some
+# questions , Make sure to choose your question wisely, your attributes should reflect more to
+# your problem statement. User have to answer atleast 5 questions and the remaining one will
+# be depend on user, whether to answer or not.
+# B. The questionnaire will contains at least 10 questions and you have to collect dataset from
+# minimum 100 individuals
+# C. After collecting dataset, Perform some Statistical analysis over it, Do some Graphical
+# Visualization, Check whether the dataset you have collected is balanced or not.
+# D. Perform Data wrangling, If the dataset contain any missing records try to handle these
+# missing values wisely.
+# E. If you found your dataset is not balanced then choose a technique other than smote or
+# NearMiss
+# F. Perform feature selection technique other than Variance Threshold and Pearson correlation
+# and explain in a text cell its working.
+# G. If the dataset contain any categorical feature then encode it using Dummy Encoding, and
+# explain the difference between dummy encoding and one hot encoding
+# H. Check whether your dataset contain any duplicate records, if it does, then handle these
+# records with atleast 2 techniques.
+
+
+import pandas as pd
+import seaborn as sns
+import matplotlib.pyplot as plt
+from sklearn.utils import resample
+from sklearn.feature_selection import chi2
+
+#a theoretical file that will contain data from my survey
+survey_df = pd.read_csv("SurveyData.csv")  
+
+#Statistical summary
+print(survey_df.describe(include="all"))
+
+#visualization 
+sns.countplot(x="Q1", data=survey_df)
+plt.show()
+
+
+survey_df.fillna(survey_df.mode().iloc[0], inplace=True)
+
+
+class_counts = survey_df["TARGET"].value_counts()
+minority = survey_df[survey_df["TARGET"] == class_counts.idxmin()]
+majority = survey_df[survey_df["TARGET"] == class_counts.idxmax()]
+majority_downsampled = resample(majority, replace=False, n_samples=len(minority), random_state=42)
+balanced_survey = pd.concat([minority, majority_downsampled])
+
+#feature selection with Chi-Square
+categorical_features = pd.get_dummies(balanced_survey.drop("TARGET", axis=1))
+chi_scores, p_vals = chi2(categorical_features, balanced_survey["TARGET"])
+chi_series = pd.Series(chi_scores, index=categorical_features.columns).sort_values(ascending=False)
+print("Top Chi-Square Features:\n", chi_series.head())
+
+#dummy Encoding
+dummy_encoded = pd.get_dummies(survey_df, drop_first=True)
+print("Dummy Encoded Shape:", dummy_encoded.shape)
+
+#handle duplicates
+survey_df = survey_df.drop_duplicates()                        
+survey_df = survey_df.drop_duplicates(subset=["Q1", "Q2"])     
+
+
+#survey example
+# Questions:
+
+# Q1: Age (Required)
+
+# Q2: Gender (Required)
+
+# Q3: Study Hours per Day (Required)
+
+# Q4: Do you have a part-time job? (Required)
+
+# Q5: GPA Range (Required)
+
+# Q6: Do you exercise regularly? (Optional)
+
+# Q7: Preferred Study Time (Optional)
+
+# Q8: Internet Usage (Optional)
+
+# Q9: Preferred Learning Mode (Optional)
+
+# Q10: Academic Life Satisfaction (Optional)
+

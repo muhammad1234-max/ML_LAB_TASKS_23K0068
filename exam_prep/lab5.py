@@ -1,635 +1,679 @@
-# Import necessary libraries
-import pandas as pd
+# =============================================================================
+# 1. MAX VOTING ENSEMBLE (Manual Implementation)
+# =============================================================================
+
 import numpy as np
-import matplotlib.pyplot as plt
-import seaborn as sns
+import pandas as pd
+from sklearn.datasets import make_classification
 from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import StandardScaler, LabelEncoder
-from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
-from sklearn.linear_model import LogisticRegression
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.neighbors import KNeighborsClassifier
-from sklearn.ensemble import (
-    VotingClassifier, 
-    BaggingClassifier, 
-    RandomForestClassifier, 
-    AdaBoostClassifier
-)
-from xgboost import XGBClassifier
-import warnings
-warnings.filterwarnings('ignore')
+from sklearn.linear_model import LogisticRegression
+from sklearn.metrics import accuracy_score
+from scipy import stats
+
+def max_voting_ensemble():
+    """
+    MAX VOTING ENSEMBLE TECHNIQUE
+    - Multiple models make predictions for each data point
+    - Each prediction is considered as a 'vote'
+    - Final prediction is the majority vote (mode)
+    - Used for classification problems
+    """
+    
+    # Generate sample data
+    X, y = make_classification(n_samples=1000, n_features=20, n_classes=2, random_state=42)
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=42)
+    
+    # Initialize multiple models
+    model1 = DecisionTreeClassifier(random_state=42)
+    model2 = KNeighborsClassifier(n_neighbors=5)
+    model3 = LogisticRegression(random_state=42)
+    
+    # Train all models
+    print("Training individual models for Max Voting...")
+    model1.fit(X_train, y_train)
+    model2.fit(X_train, y_train)
+    model3.fit(X_train, y_train)
+    
+    # Get predictions from each model
+    pred1 = model1.predict(X_test)
+    pred2 = model2.predict(X_test)
+    pred3 = model3.predict(X_test)
+    
+    # Apply Max Voting (Manual Implementation)
+    final_predictions = []
+    for i in range(len(X_test)):
+        # Collect votes from all models
+        votes = [pred1[i], pred2[i], pred3[i]]
+        # Take the mode (most frequent prediction)
+        final_vote = stats.mode(votes)[0][0]
+        final_predictions.append(final_vote)
+    
+    # Calculate accuracy
+    accuracy = accuracy_score(y_test, final_predictions)
+    print(f"Max Voting Ensemble Accuracy: {accuracy:.4f}")
+    
+    # Compare with individual models
+    acc1 = accuracy_score(y_test, pred1)
+    acc2 = accuracy_score(y_test, pred2)
+    acc3 = accuracy_score(y_test, pred3)
+    
+    print(f"Individual Model Accuracies:")
+    print(f"Decision Tree: {acc1:.4f}")
+    print(f"K-Neighbors: {acc2:.4f}")
+    print(f"Logistic Regression: {acc3:.4f}")
+    
+    return final_predictions, accuracy
+
+# Run max voting ensemble
+max_voting_predictions, max_voting_accuracy = max_voting_ensemble()
+
 
 # =============================================================================
-# DATA PREPARATION AND EDA (TASK 1)
+# 2. AVERAGING ENSEMBLE (Probability Based)
 # =============================================================================
 
-def create_sample_heart_disease_dataset():
+def averaging_ensemble():
     """
-    Create a sample heart disease dataset for demonstration
-    Since the actual dataset isn't specified, we'll create a realistic synthetic one
+    AVERAGING ENSEMBLE TECHNIQUE
+    - Multiple models make probability predictions
+    - Average of all probability predictions is taken
+    - Final prediction based on highest average probability
+    - Can be used for both classification and regression
     """
-    np.random.seed(42)
-    n_samples = 1000
     
-    # Generate synthetic features similar to heart disease data
-    age = np.random.normal(55, 10, n_samples).astype(int)
-    chol = np.random.normal(240, 50, n_samples).astype(int)  # cholesterol
-    restecg = np.random.choice([0, 1, 2], n_samples, p=[0.5, 0.4, 0.1])  # resting ECG
-    oldpeak = np.random.exponential(1, n_samples)  # ST depression
-    thalch = np.random.normal(150, 25, n_samples).astype(int)  # max heart rate
-    cp = np.random.choice([0, 1, 2, 3], n_samples)  # chest pain type
-    exang = np.random.choice([0, 1], n_samples, p=[0.7, 0.3])  # exercise induced angina
+    # Generate sample data
+    X, y = make_classification(n_samples=1000, n_features=20, n_classes=2, random_state=42)
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=42)
     
-    # Create target variable (Label) with some relationship to features
-    # Higher age, chol, oldpeak increase probability of heart disease
-    disease_prob = (
-        0.1 + 
-        0.002 * (age - 55) + 
-        0.001 * (chol - 240) + 
-        0.1 * oldpeak + 
-        0.05 * (thalch - 150) +
-        0.1 * cp +
-        0.2 * exang
+    # Initialize multiple models
+    model1 = DecisionTreeClassifier(random_state=42)
+    model2 = KNeighborsClassifier(n_neighbors=5)
+    model3 = LogisticRegression(random_state=42)
+    
+    # Train all models
+    print("Training individual models for Averaging Ensemble...")
+    model1.fit(X_train, y_train)
+    model2.fit(X_train, y_train)
+    model3.fit(X_train, y_train)
+    
+    # Get probability predictions from each model
+    # predict_proba returns probabilities for each class
+    prob1 = model1.predict_proba(X_test)
+    prob2 = model2.predict_proba(X_test)
+    prob3 = model3.predict_proba(X_test)
+    
+    # Average the probabilities across all models
+    avg_probabilities = (prob1 + prob2 + prob3) / 3
+    
+    # Final prediction is the class with highest average probability
+    final_predictions = np.argmax(avg_probabilities, axis=1)
+    
+    # Calculate accuracy
+    accuracy = accuracy_score(y_test, final_predictions)
+    print(f"Averaging Ensemble Accuracy: {accuracy:.4f}")
+    
+    # Display sample probabilities
+    print("\nSample Probability Predictions:")
+    print("Model 1 probabilities:", prob1[0])
+    print("Model 2 probabilities:", prob2[0])
+    print("Model 3 probabilities:", prob3[0])
+    print("Averaged probabilities:", avg_probabilities[0])
+    print("Final prediction:", final_predictions[0])
+    print("Actual class:", y_test[0])
+    
+    return final_predictions, accuracy, avg_probabilities
+
+# Run averaging ensemble
+avg_predictions, avg_accuracy, avg_probs = averaging_ensemble()
+
+
+
+# =============================================================================
+# 3. VOTING CLASSIFIER (Sklearn Implementation)
+# =============================================================================
+
+from sklearn.ensemble import VotingClassifier
+
+def voting_classifier_sklearn():
+    """
+    VOTING CLASSIFIER USING SKLEARN
+    - Built-in VotingClassifier for easy ensemble implementation
+    - Supports both 'hard' and 'soft' voting
+    - Hard: Majority vote of predictions
+    - Soft: Average of probability predictions
+    """
+    
+    # Generate sample data
+    X, y = make_classification(n_samples=1000, n_features=20, n_classes=2, random_state=42)
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=42)
+    
+    # Define individual models
+    model1 = LogisticRegression(random_state=42)
+    model2 = DecisionTreeClassifier(random_state=42)
+    model3 = KNeighborsClassifier(n_neighbors=5)
+    
+    # Create estimator list with names
+    estimators = [
+        ('lr', model1),      # Logistic Regression
+        ('dt', model2),      # Decision Tree
+        ('knn', model3)      # K-Nearest Neighbors
+    ]
+    
+    # HARD VOTING CLASSIFIER
+    print("HARD VOTING CLASSIFIER")
+    print("-" * 30)
+    hard_voting = VotingClassifier(
+        estimators=estimators,
+        voting='hard'  # Use majority vote
     )
-    disease_prob = np.clip(disease_prob, 0, 1)
-    label = np.random.binomial(1, disease_prob)
     
-    # Create DataFrame
-    df = pd.DataFrame({
-        'age': age,
-        'chol': chol,
-        'restecg': restecg,
-        'oldpeak': oldpeak,
-        'thalch': thalch,
-        'cp': cp,
-        'exang': exang,
-        'Label': label
-    })
+    hard_voting.fit(X_train, y_train)
+    hard_accuracy = hard_voting.score(X_test, y_test)
+    print(f"Hard Voting Accuracy: {hard_accuracy:.4f}")
     
-    # Add some missing values and duplicates for demonstration
-    df.iloc[10:15, 2] = np.nan  # restecg missing
-    df.iloc[20:25, 3] = np.nan  # oldpeak missing
+    # SOFT VOTING CLASSIFIER
+    print("\nSOFT VOTING CLASSIFIER")
+    print("-" * 30)
+    soft_voting = VotingClassifier(
+        estimators=estimators,
+        voting='soft'  # Use average probabilities
+    )
     
-    # Add duplicate rows
-    duplicates = df.iloc[50:55].copy()
-    df = pd.concat([df, duplicates], ignore_index=True)
+    soft_voting.fit(X_train, y_train)
+    soft_accuracy = soft_voting.score(X_test, y_test)
+    print(f"Soft Voting Accuracy: {soft_accuracy:.4f}")
     
-    return df
-
-print("=" * 70)
-print("TASK 1: COMPREHENSIVE DATA ANALYSIS AND ENSEMBLE MODELING")
-print("=" * 70)
-
-# Create and explore the dataset
-df = create_sample_heart_disease_dataset()
-print("Dataset Shape:", df.shape)
-print("\nFirst 5 rows:")
-print(df.head())
-
-# 1. Perform EDA
-print("\n1. EXPLORATORY DATA ANALYSIS (EDA)")
-print("-" * 50)
-
-# Basic information
-print("Dataset Info:")
-print(df.info())
-
-print("\nDescriptive Statistics:")
-print(df.describe())
-
-# Check for missing values
-print("\nMissing Values:")
-print(df.isnull().sum())
-
-# Handle missing values
-print("\nHandling missing values...")
-for col in df.columns:
-    if df[col].isnull().sum() > 0:
-        if df[col].dtype in ['float64']:
-            # Numerical columns: fill with median (robust to outliers)
-            df[col].fillna(df[col].median(), inplace=True)
-            print(f"Filled missing values in {col} with median: {df[col].median():.2f}")
-        else:
-            # Categorical columns: fill with mode
-            mode_val = df[col].mode()[0]
-            df[col].fillna(mode_val, inplace=True)
-            print(f"Filled missing values in {col} with mode: {mode_val}")
-
-# Remove duplicates
-duplicates = df.duplicated().sum()
-print(f"\nNumber of duplicate records: {duplicates}")
-if duplicates > 0:
-    df = df.drop_duplicates()
-    print(f"Removed {duplicates} duplicate records")
-
-print(f"Dataset shape after preprocessing: {df.shape}")
-
-# 2. Check if dataset is balanced
-print("\n2. DATASET BALANCE CHECK")
-print("-" * 50)
-label_counts = df['Label'].value_counts()
-print("Label distribution:")
-print(label_counts)
-balance_ratio = label_counts[0] / label_counts[1]
-print(f"Balance ratio (Class 0/Class 1): {balance_ratio:.2f}")
-print(f"Dataset is {'balanced' if 0.8 <= balance_ratio <= 1.2 else 'imbalanced'}")
-
-# 3. Check if feature scaling is required
-print("\n3. FEATURE SCALING ANALYSIS")
-print("-" * 50)
-
-# Check feature distributions and ranges
-numerical_features = ['age', 'chol', 'oldpeak', 'thalch']
-print("Feature ranges before scaling:")
-print(df[numerical_features].describe().loc[['min', 'max', 'std']])
-
-# Apply StandardScaler (features have different scales)
-print("\nApplying StandardScaler...")
-scaler = StandardScaler()
-df_scaled = df.copy()
-df_scaled[numerical_features] = scaler.fit_transform(df[numerical_features])
-
-print("Feature ranges after scaling:")
-print(df_scaled[numerical_features].describe().loc[['min', 'max', 'std']])
-
-# 4. Split dataset into train, test, and validation sets
-print("\n4. DATA SPLITTING")
-print("-" * 50)
-
-# Prepare features and target
-X = df_scaled.drop('Label', axis=1)
-y = df_scaled['Label']
-
-# First split: train (80%) and test (20%)
-X_train, X_test, y_train, y_test = train_test_split(
-    X, y, test_size=0.2, random_state=0, stratify=y
-)
-
-# Second split: split train into train (70%) and validation (30%)
-X_train_final, X_val, y_train_final, y_val = train_test_split(
-    X_train, y_train, test_size=0.3, random_state=0, stratify=y_train
-)
-
-print(f"Training set shape: {X_train_final.shape}")
-print(f"Validation set shape: {X_val.shape}")
-print(f"Test set shape: {X_test.shape}")
-
-print("\nWhy we use validation set:")
-print("• Hyperparameter tuning without overfitting to test set")
-print("• Model selection and early stopping")
-print("• Monitoring model performance during training")
-print("• Preventing data leakage from test set")
-
-# =============================================================================
-# ENSEMBLE METHODS IMPLEMENTATION
-# =============================================================================
-
-print("\n" + "=" * 70)
-print("ENSEMBLE METHODS IMPLEMENTATION")
-print("=" * 70)
-
-# =============================================================================
-# SIMPLE ENSEMBLE TECHNIQUES
-# =============================================================================
-
-print("\n1. SIMPLE ENSEMBLE TECHNIQUES")
-print("-" * 50)
-
-# Create individual models
-dt_model = DecisionTreeClassifier(random_state=42)
-knn_model = KNeighborsClassifier()
-lr_model = LogisticRegression(random_state=42)
-
-# Train individual models
-print("Training individual models...")
-dt_model.fit(X_train_final, y_train_final)
-knn_model.fit(X_train_final, y_train_final)
-lr_model.fit(X_train_final, y_train_final)
-
-# Get predictions from each model
-dt_pred = dt_model.predict(X_test)
-knn_pred = knn_model.predict(X_test)
-lr_pred = lr_model.predict(X_test)
-
-# MAX VOTING (Manual Implementation)
-print("\nMAX VOTING (Manual Implementation):")
-max_voting_pred = []
-for i in range(len(X_test)):
-    votes = [dt_pred[i], knn_pred[i], lr_pred[i]]
-    final_vote = max(set(votes), key=votes.count)  # Mode of predictions
-    max_voting_pred.append(final_vote)
-
-max_voting_accuracy = accuracy_score(y_test, max_voting_pred)
-print(f"Max Voting Accuracy: {max_voting_accuracy * 100:.2f}%")
-
-# AVERAGING (for probabilities)
-print("\nAVERAGING (Probability-based):")
-dt_proba = dt_model.predict_proba(X_test)
-knn_proba = knn_model.predict_proba(X_test)
-lr_proba = lr_model.predict_proba(X_test)
-
-avg_proba = (dt_proba + knn_proba + lr_proba) / 3
-avg_pred = np.argmax(avg_proba, axis=1)
-avg_accuracy = accuracy_score(y_test, avg_pred)
-print(f"Averaging Accuracy: {avg_accuracy * 100:.2f}%")
-
-# =============================================================================
-# VOTING CLASSIFIER (SKLEARN)
-# =============================================================================
-
-print("\n2. VOTING CLASSIFIER (SKLEARN IMPLEMENTATION)")
-print("-" * 50)
-
-# Define models for voting classifier
-model1 = LogisticRegression(random_state=42)
-model2 = DecisionTreeClassifier(random_state=42)
-model3 = KNeighborsClassifier()
-
-# HARD VOTING
-print("Hard Voting Classifier:")
-hard_voting = VotingClassifier(
-    estimators=[('lr', model1), ('dt', model2), ('knn', model3)], 
-    voting='hard'
-)
-hard_voting.fit(X_train_final, y_train_final)
-hard_voting_score = hard_voting.score(X_test, y_test)
-print(f"Hard Voting Accuracy: {hard_voting_score * 100:.2f}%")
-
-# SOFT VOTING
-print("\nSoft Voting Classifier:")
-soft_voting = VotingClassifier(
-    estimators=[('lr', model1), ('dt', model2), ('knn', model3)], 
-    voting='soft'
-)
-soft_voting.fit(X_train_final, y_train_final)
-soft_voting_score = soft_voting.score(X_test, y_test)
-print(f"Soft Voting Accuracy: {soft_voting_score * 100:.2f}%")
-
-# =============================================================================
-# BAGGING ALGORITHMS
-# =============================================================================
-
-print("\n3. BAGGING ALGORITHMS")
-print("-" * 50)
-
-# Bagging with Decision Trees
-print("Bagging Classifier (with Decision Trees):")
-bagging_clf = BaggingClassifier(
-    estimator=DecisionTreeClassifier(),
-    n_estimators=50,
-    random_state=42,
-    max_samples=0.8,
-    max_features=0.8
-)
-bagging_clf.fit(X_train_final, y_train_final)
-bagging_score = bagging_clf.score(X_test, y_test)
-print(f"Bagging Classifier Accuracy: {bagging_score * 100:.2f}%")
-
-# Random Forest (Specialized Bagging)
-print("\nRandom Forest Classifier:")
-rf_clf = RandomForestClassifier(
-    n_estimators=100,
-    random_state=42,
-    max_depth=10
-)
-rf_clf.fit(X_train_final, y_train_final)
-rf_score = rf_clf.score(X_test, y_test)
-print(f"Random Forest Accuracy: {rf_score * 100:.2f}%")
-
-# =============================================================================
-# BOOSTING ALGORITHMS
-# =============================================================================
-
-print("\n4. BOOSTING ALGORITHMS")
-print("-" * 50)
-
-# AdaBoost
-print("AdaBoost Classifier:")
-adaboost_clf = AdaBoostClassifier(
-    estimator=DecisionTreeClassifier(max_depth=1),
-    n_estimators=50,
-    random_state=42,
-    learning_rate=1.0
-)
-adaboost_clf.fit(X_train_final, y_train_final)
-adaboost_score = adaboost_clf.score(X_test, y_test)
-print(f"AdaBoost Accuracy: {adaboost_score * 100:.2f}%")
-
-# XGBoost
-print("\nXGBoost Classifier:")
-xgb_clf = XGBClassifier(
-    n_estimators=100,
-    random_state=42,
-    learning_rate=0.1,
-    max_depth=6
-)
-xgb_clf.fit(X_train_final, y_train_final)
-xgb_score = xgb_clf.score(X_test, y_test)
-print(f"XGBoost Accuracy: {xgb_score * 100:.2f}%")
-
-# =============================================================================
-# TASK 1: COMPARE ALL THREE ALGORITHMS
-# =============================================================================
-
-print("\n" + "=" * 70)
-print("TASK 1: COMPARISON OF RANDOM FOREST, XGBOOST, ADABOOST")
-print("=" * 70)
-
-# Train all three algorithms and compare their performance
-models = {
-    'Random Forest': RandomForestClassifier(n_estimators=100, random_state=42),
-    'XGBoost': XGBClassifier(n_estimators=100, random_state=42),
-    'AdaBoost': AdaBoostClassifier(n_estimators=100, random_state=42)
-}
-
-results = {}
-for name, model in models.items():
-    print(f"\nTraining {name}...")
-    model.fit(X_train_final, y_train_final)
+    # Compare individual model performances
+    print("\nINDIVIDUAL MODEL PERFORMANCE")
+    print("-" * 30)
+    for name, model in estimators:
+        model.fit(X_train, y_train)
+        accuracy = model.score(X_test, y_test)
+        print(f"{name.upper()} Accuracy: {accuracy:.4f}")
     
-    # Training accuracy
-    train_pred = model.predict(X_train_final)
-    train_acc = accuracy_score(y_train_final, train_pred)
+    return hard_voting, soft_voting, hard_accuracy, soft_accuracy
+
+# Run voting classifier
+hard_voter, soft_voter, hard_acc, soft_acc = voting_classifier_sklearn()
+
+
+
+# =============================================================================
+# 4. BAGGING CLASSIFIER (Bootstrap Aggregating)
+# =============================================================================
+
+from sklearn.ensemble import BaggingClassifier
+from sklearn.tree import DecisionTreeClassifier
+
+def bagging_ensemble():
+    """
+    BAGGING (Bootstrap Aggregating) ENSEMBLE
+    - Creates multiple subsets of original data (with replacement)
+    - Trains a base model on each subset
+    - Combines predictions from all models
+    - Reduces variance and prevents overfitting
+    """
     
-    # Testing accuracy
-    test_pred = model.predict(X_test)
-    test_acc = accuracy_score(y_test, test_pred)
+    # Generate sample data
+    X, y = make_classification(n_samples=1000, n_features=20, n_classes=2, random_state=42)
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=42)
     
-    results[name] = {
-        'Training Accuracy': train_acc,
-        'Testing Accuracy': test_acc,
-        'Model': model
+    # Create base estimator (weak learner)
+    base_estimator = DecisionTreeClassifier(max_depth=5, random_state=42)
+    
+    # BAGGING CLASSIFIER
+    print("BAGGING CLASSIFIER IMPLEMENTATION")
+    print("-" * 35)
+    
+    bagging_clf = BaggingClassifier(
+        estimator=base_estimator,    # Base model to use
+        n_estimators=50,            # Number of base models
+        max_samples=0.8,            # Sample size for each model (80% of data)
+        max_features=0.8,           # Feature size for each model (80% of features)
+        bootstrap=True,              # Sample with replacement
+        bootstrap_features=False,    # Features without replacement
+        random_state=42,
+        n_jobs=-1                   # Use all available cores
+    )
+    
+    # Train the bagging classifier
+    print("Training Bagging Classifier...")
+    bagging_clf.fit(X_train, y_train)
+    
+    # Make predictions
+    bagging_accuracy = bagging_clf.score(X_test, y_test)
+    print(f"Bagging Classifier Accuracy: {bagging_accuracy:.4f}")
+    
+    # Compare with single decision tree
+    single_tree = DecisionTreeClassifier(max_depth=5, random_state=42)
+    single_tree.fit(X_train, y_train)
+    single_tree_accuracy = single_tree.score(X_test, y_test)
+    print(f"Single Decision Tree Accuracy: {single_tree_accuracy:.4f}")
+    
+    print(f"Improvement with Bagging: {bagging_accuracy - single_tree_accuracy:.4f}")
+    
+    # Display bagging parameters
+    print("\nBagging Classifier Parameters:")
+    print(f"Number of estimators: {bagging_clf.n_estimators}")
+    print(f"Max samples per estimator: {bagging_clf.max_samples}")
+    print(f"Max features per estimator: {bagging_clf.max_features}")
+    
+    return bagging_clf, bagging_accuracy
+
+# Run bagging ensemble
+bagging_model, bagging_acc = bagging_ensemble()
+
+
+
+# =============================================================================
+# 5. RANDOM FOREST (Special Bagging Implementation)
+# =============================================================================
+
+from sklearn.ensemble import RandomForestClassifier
+
+def random_forest_ensemble():
+    """
+    RANDOM FOREST CLASSIFIER
+    - Specialized implementation of bagging
+    - Uses decision trees as base estimators
+    - Random subset of features for each split
+    - Built-in feature importance calculation
+    - Highly effective for various problems
+    """
+    
+    # Generate sample data
+    X, y = make_classification(n_samples=1000, n_features=20, n_classes=2, random_state=42)
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=42)
+    
+    print("RANDOM FOREST CLASSIFIER")
+    print("-" * 30)
+    
+    # Create Random Forest classifier
+    rf_clf = RandomForestClassifier(
+        n_estimators=100,        # Number of trees in the forest
+        criterion='gini',        # Split quality measure
+        max_depth=10,            # Maximum depth of trees
+        min_samples_split=2,     # Minimum samples required to split
+        min_samples_leaf=1,      # Minimum samples required at leaf node
+        max_features='sqrt',     # Number of features for best split
+        bootstrap=True,          # Use bootstrap samples
+        random_state=42,
+        n_jobs=-1,              # Use all available cores
+        verbose=0
+    )
+    
+    # Train the Random Forest
+    print("Training Random Forest Classifier...")
+    rf_clf.fit(X_train, y_train)
+    
+    # Make predictions
+    rf_accuracy = rf_clf.score(X_test, y_test)
+    print(f"Random Forest Accuracy: {rf_accuracy:.4f}")
+    
+    # Feature Importance
+    feature_importance = rf_clf.feature_importances_
+    print(f"\nTop 5 Most Important Features:")
+    
+    # Create feature importance DataFrame
+    importance_df = pd.DataFrame({
+        'feature': [f'Feature_{i}' for i in range(X.shape[1])],
+        'importance': feature_importance
+    }).sort_values('importance', ascending=False)
+    
+    print(importance_df.head())
+    
+    # Compare with single decision tree
+    single_tree = DecisionTreeClassifier(max_depth=10, random_state=42)
+    single_tree.fit(X_train, y_train)
+    single_tree_accuracy = single_tree.score(X_test, y_test)
+    
+    print(f"\nSingle Decision Tree Accuracy: {single_tree_accuracy:.4f}")
+    print(f"Random Forest Improvement: {rf_accuracy - single_tree_accuracy:.4f}")
+    
+    return rf_clf, rf_accuracy, feature_importance
+
+# Run random forest
+rf_model, rf_accuracy, feature_importance = random_forest_ensemble()
+
+
+
+# =============================================================================
+# 6. ADABOOST (Adaptive Boosting)
+# =============================================================================
+
+from sklearn.ensemble import AdaBoostClassifier
+
+def adaboost_ensemble():
+    """
+    ADABOOST (Adaptive Boosting) CLASSIFIER
+    - Sequential training of weak learners
+    - Incorrectly predicted samples get higher weights
+    - Each model tries to correct previous model's errors
+    - Combines weak learners to form strong learner
+    """
+    
+    # Generate sample data
+    X, y = make_classification(n_samples=1000, n_features=20, n_classes=2, random_state=42)
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=42)
+    
+    print("ADABOOST CLASSIFIER")
+    print("-" * 25)
+    
+    # Create base estimator (weak learner)
+    base_estimator = DecisionTreeClassifier(
+        max_depth=1,  # Very weak learner (decision stump)
+        random_state=42
+    )
+    
+    # Create AdaBoost classifier
+    adaboost_clf = AdaBoostClassifier(
+        estimator=base_estimator,    # Base weak learner
+        n_estimators=50,            # Number of weak learners
+        learning_rate=1.0,          # Contribution of each classifier
+        algorithm='SAMME.R',        # Boosting algorithm
+        random_state=42
+    )
+    
+    # Train AdaBoost
+    print("Training AdaBoost Classifier...")
+    adaboost_clf.fit(X_train, y_train)
+    
+    # Make predictions
+    adaboost_accuracy = adaboost_clf.score(X_test, y_test)
+    print(f"AdaBoost Accuracy: {adaboost_accuracy:.4f}")
+    
+    # Compare with single weak learner
+    weak_learner = DecisionTreeClassifier(max_depth=1, random_state=42)
+    weak_learner.fit(X_train, y_train)
+    weak_accuracy = weak_learner.score(X_test, y_test)
+    
+    print(f"Single Weak Learner Accuracy: {weak_accuracy:.4f}")
+    print(f"AdaBoost Improvement: {adaboost_accuracy - weak_accuracy:.4f}")
+    
+    # Display estimator weights
+    estimator_weights = adaboost_clf.estimator_weights_
+    print(f"\nFirst 10 Estimator Weights: {estimator_weights[:10]}")
+    
+    # Display estimator errors
+    estimator_errors = adaboost_clf.estimator_errors_
+    print(f"First 10 Estimator Errors: {estimator_errors[:10]}")
+    
+    return adaboost_clf, adaboost_accuracy
+
+# Run AdaBoost
+adaboost_model, adaboost_acc = adaboost_ensemble()
+
+
+
+# =============================================================================
+# 7. XGBOOST (Extreme Gradient Boosting)
+# =============================================================================
+
+from xgboost import XGBClassifier
+
+def xgboost_ensemble():
+    """
+    XGBOOST (Extreme Gradient Boosting)
+    - Optimized gradient boosting implementation
+    - Regularization to prevent overfitting
+    - Handles missing values automatically
+    - Parallel processing for faster training
+    - Often wins machine learning competitions
+    """
+    
+    # Generate sample data
+    X, y = make_classification(n_samples=1000, n_features=20, n_classes=2, random_state=42)
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=42)
+    
+    print("XGBOOST CLASSIFIER")
+    print("-" * 25)
+    
+    # Create XGBoost classifier
+    xgb_clf = XGBClassifier(
+        n_estimators=100,        # Number of boosting rounds
+        max_depth=6,             # Maximum tree depth
+        learning_rate=0.1,       # Step size shrinkage
+        subsample=0.8,           # Subsample ratio of training instances
+        colsample_bytree=0.8,    # Subsample ratio of features
+        reg_alpha=0.1,           # L1 regularization term
+        reg_lambda=1.0,          # L2 regularization term
+        random_state=42,
+        n_jobs=-1,              # Use all available cores
+        eval_metric='logloss',   # Evaluation metric
+        use_label_encoder=False
+    )
+    
+    # Train XGBoost
+    print("Training XGBoost Classifier...")
+    xgb_clf.fit(X_train, y_train)
+    
+    # Make predictions
+    xgb_accuracy = xgb_clf.score(X_test, y_test)
+    print(f"XGBoost Accuracy: {xgb_accuracy:.4f}")
+    
+    # Feature Importance
+    feature_importance = xgb_clf.feature_importances_
+    print(f"\nTop 5 Most Important Features:")
+    
+    importance_df = pd.DataFrame({
+        'feature': [f'Feature_{i}' for i in range(X.shape[1])],
+        'importance': feature_importance
+    }).sort_values('importance', ascending=False)
+    
+    print(importance_df.head())
+    
+    # Compare with other ensemble methods
+    rf_clf = RandomForestClassifier(n_estimators=100, random_state=42)
+    rf_clf.fit(X_train, y_train)
+    rf_accuracy = rf_clf.score(X_test, y_test)
+    
+    print(f"\nRandom Forest Accuracy: {rf_accuracy:.4f}")
+    print(f"XGBoost vs Random Forest Difference: {xgb_accuracy - rf_accuracy:.4f}")
+    
+    return xgb_clf, xgb_accuracy
+
+# Run XGBoost
+xgb_model, xgb_acc = xgboost_ensemble()
+
+
+
+# =============================================================================
+# 8. WEIGHTED AVERAGE VOTING
+# =============================================================================
+
+def weighted_average_voting():
+    """
+    WEIGHTED AVERAGE VOTING ENSEMBLE
+    - Similar to averaging but with different weights for each model
+    - Weights can be based on model performance or domain knowledge
+    - More emphasis on better performing models
+    """
+    
+    # Generate sample data
+    X, y = make_classification(n_samples=1000, n_features=20, n_classes=2, random_state=42)
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=42)
+    
+    # Initialize multiple models
+    model1 = DecisionTreeClassifier(random_state=42)
+    model2 = KNeighborsClassifier(n_neighbors=5)
+    model3 = LogisticRegression(random_state=42)
+    
+    # Train all models
+    print("Training models for Weighted Average Voting...")
+    model1.fit(X_train, y_train)
+    model2.fit(X_train, y_train)
+    model3.fit(X_train, y_train)
+    
+    # Get individual model accuracies (for weight assignment)
+    acc1 = model1.score(X_test, y_test)
+    acc2 = model2.score(X_test, y_test)
+    acc3 = model3.score(X_test, y_test)
+    
+    print(f"Individual Model Accuracies:")
+    print(f"Model 1 (Decision Tree): {acc1:.4f}")
+    print(f"Model 2 (K-Neighbors): {acc2:.4f}")
+    print(f"Model 3 (Logistic Regression): {acc3:.4f}")
+    
+    # Calculate weights based on performance
+    total_acc = acc1 + acc2 + acc3
+    weights = [acc1/total_acc, acc2/total_acc, acc3/total_acc]
+    
+    print(f"\nModel Weights: {[f'{w:.4f}' for w in weights]}")
+    
+    # Get probability predictions
+    prob1 = model1.predict_proba(X_test)
+    prob2 = model2.predict_proba(X_test)
+    prob3 = model3.predict_proba(X_test)
+    
+    # Apply weighted average
+    weighted_avg_prob = (weights[0] * prob1 + 
+                        weights[1] * prob2 + 
+                        weights[2] * prob3)
+    
+    # Final predictions
+    weighted_predictions = np.argmax(weighted_avg_prob, axis=1)
+    weighted_accuracy = accuracy_score(y_test, weighted_predictions)
+    
+    print(f"\nWeighted Average Voting Accuracy: {weighted_accuracy:.4f}")
+    
+    # Compare with simple averaging
+    simple_avg_prob = (prob1 + prob2 + prob3) / 3
+    simple_predictions = np.argmax(simple_avg_prob, axis=1)
+    simple_accuracy = accuracy_score(y_test, simple_predictions)
+    
+    print(f"Simple Average Voting Accuracy: {simple_accuracy:.4f}")
+    print(f"Weighted vs Simple Improvement: {weighted_accuracy - simple_accuracy:.4f}")
+    
+    return weighted_predictions, weighted_accuracy, weights
+
+# Run weighted average voting
+weighted_preds, weighted_acc, model_weights = weighted_average_voting()
+
+
+# =============================================================================
+# 9. COMPREHENSIVE ENSEMBLE COMPARISON
+# =============================================================================
+
+import matplotlib.pyplot as plt
+
+def ensemble_comparison():
+    """
+    COMPREHENSIVE COMPARISON OF ALL ENSEMBLE METHODS
+    - Compare all ensemble techniques on the same dataset
+    - Visualize performance differences
+    - Provide insights on when to use each method
+    """
+    
+    # Generate sample data
+    X, y = make_classification(n_samples=1000, n_features=20, n_classes=2, random_state=42)
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=42)
+    
+    print("COMPREHENSIVE ENSEMBLE METHOD COMPARISON")
+    print("=" * 50)
+    
+    # Dictionary to store results
+    results = {}
+    
+    # 1. Individual Models (Baseline)
+    models = {
+        'Decision Tree': DecisionTreeClassifier(random_state=42),
+        'K-Neighbors': KNeighborsClassifier(n_neighbors=5),
+        'Logistic Regression': LogisticRegression(random_state=42)
     }
     
-    print(f"{name} - Training Accuracy: {train_acc * 100:.2f}%")
-    print(f"{name} - Testing Accuracy: {test_acc * 100:.2f}%")
-
-# Display comparison
-print("\n" + "=" * 50)
-print("MODEL COMPARISON SUMMARY")
-print("=" * 50)
-comparison_df = pd.DataFrame(results).T
-print(comparison_df[['Training Accuracy', 'Testing Accuracy']].round(4))
-
-# =============================================================================
-# TASK 2: VOTING CLASSIFIER WITH SPECIFIC FEATURES
-# =============================================================================
-
-print("\n" + "=" * 70)
-print("TASK 2: VOTING CLASSIFIER WITH restEcg AND Oldpeak")
-print("=" * 70)
-
-# Extract only two features as specified
-X_two_features = df_scaled[['restecg', 'oldpeak']]
-y = df_scaled['Label']
-
-# Split the data with two features
-X_train_2, X_test_2, y_train_2, y_test_2 = train_test_split(
-    X_two_features, y, test_size=0.2, random_state=0, stratify=y
-)
-
-X_train_final_2, X_val_2, y_train_final_2, y_val_2 = train_test_split(
-    X_train_2, y_train_2, test_size=0.3, random_state=0, stratify=y_train_2
-)
-
-print(f"Training set shape with 2 features: {X_train_final_2.shape}")
-
-# Define models for voting classifier
-models_task2 = [
-    ('dt', DecisionTreeClassifier(random_state=42)),
-    ('knn', KNeighborsClassifier()),
-    ('rf', RandomForestClassifier(n_estimators=50, random_state=42)),
-    ('xgb', XGBClassifier(n_estimators=50, random_state=42))
-]
-
-# Test both hard and soft voting
-voting_types = ['hard', 'soft']
-voting_results = {}
-
-for voting_type in voting_types:
-    print(f"\n{voting_type.upper()} VOTING with 2 features:")
-    voting_clf = VotingClassifier(
-        estimators=models_task2,
-        voting=voting_type
+    for name, model in models.items():
+        model.fit(X_train, y_train)
+        accuracy = model.score(X_test, y_test)
+        results[name] = accuracy
+        print(f"{name}: {accuracy:.4f}")
+    
+    # 2. Ensemble Methods
+    print("\nENSEMBLE METHODS:")
+    print("-" * 20)
+    
+    # Max Voting
+    estimators = [
+        ('dt', DecisionTreeClassifier(random_state=42)),
+        ('knn', KNeighborsClassifier(n_neighbors=5)),
+        ('lr', LogisticRegression(random_state=42))
+    ]
+    
+    # Hard Voting
+    hard_voting = VotingClassifier(estimators=estimators, voting='hard')
+    hard_voting.fit(X_train, y_train)
+    results['Hard Voting'] = hard_voting.score(X_test, y_test)
+    print(f"Hard Voting: {results['Hard Voting']:.4f}")
+    
+    # Soft Voting
+    soft_voting = VotingClassifier(estimators=estimators, voting='soft')
+    soft_voting.fit(X_train, y_train)
+    results['Soft Voting'] = soft_voting.score(X_test, y_test)
+    print(f"Soft Voting: {results['Soft Voting']:.4f}")
+    
+    # Bagging
+    bagging = BaggingClassifier(
+        estimator=DecisionTreeClassifier(),
+        n_estimators=50,
+        random_state=42
     )
-    voting_clf.fit(X_train_final_2, y_train_final_2)
-    voting_accuracy = voting_clf.score(X_test_2, y_test_2)
-    voting_results[voting_type] = voting_accuracy
-    print(f"{voting_type.capitalize()} Voting Accuracy: {voting_accuracy * 100:.2f}%")
-
-# Find best voting type
-best_voting = max(voting_results, key=voting_results.get)
-print(f"\nBest voting type: {best_voting} with {voting_results[best_voting] * 100:.2f}% accuracy")
-
-# Test different weights (Manual approach)
-print("\nTesting different weight combinations:")
-weight_combinations = [
-    [1, 1, 1, 1],  # Equal weights
-    [2, 1, 3, 2],  # Higher weight for RF
-    [1, 2, 2, 3],  # Higher weight for XGB
-    [3, 1, 2, 2]   # Higher weight for DT
-]
-
-best_weights = None
-best_accuracy = 0
-
-for weights in weight_combinations:
-    weighted_voting = VotingClassifier(
-        estimators=models_task2,
-        voting='soft',
-        weights=weights
-    )
-    weighted_voting.fit(X_train_final_2, y_train_final_2)
-    weighted_accuracy = weighted_voting.score(X_test_2, y_test_2)
+    bagging.fit(X_train, y_train)
+    results['Bagging'] = bagging.score(X_test, y_test)
+    print(f"Bagging: {results['Bagging']:.4f}")
     
-    print(f"Weights {weights}: {weighted_accuracy * 100:.2f}%")
+    # Random Forest
+    rf = RandomForestClassifier(n_estimators=100, random_state=42)
+    rf.fit(X_train, y_train)
+    results['Random Forest'] = rf.score(X_test, y_test)
+    print(f"Random Forest: {results['Random Forest']:.4f}")
     
-    if weighted_accuracy > best_accuracy:
-        best_accuracy = weighted_accuracy
-        best_weights = weights
-
-print(f"\nBest weights: {best_weights} with {best_accuracy * 100:.2f}% accuracy")
-
-# =============================================================================
-# BIAS-VARIANCE TRADEOFF PLOT
-# =============================================================================
-
-print("\nPlotting Bias-Variance Tradeoff...")
-
-def calculate_bias_variance(model, X_train, X_test, y_train, y_test, n_iterations=100):
-    """
-    Calculate bias and variance for a model
-    """
-    predictions = []
+    # AdaBoost
+    adaboost = AdaBoostClassifier(n_estimators=50, random_state=42)
+    adaboost.fit(X_train, y_train)
+    results['AdaBoost'] = adaboost.score(X_test, y_test)
+    print(f"AdaBoost: {results['AdaBoost']:.4f}")
     
-    for _ in range(n_iterations):
-        # Create bootstrap sample
-        indices = np.random.choice(len(X_train), len(X_train), replace=True)
-        X_bootstrap = X_train.iloc[indices]
-        y_bootstrap = y_train.iloc[indices]
-        
-        # Train model on bootstrap sample
-        model_clone = clone(model)
-        model_clone.fit(X_bootstrap, y_bootstrap)
-        
-        # Make predictions on test set
-        pred = model_clone.predict(X_test)
-        predictions.append(pred)
+    # XGBoost
+    xgb = XGBClassifier(n_estimators=100, random_state=42, use_label_encoder=False)
+    xgb.fit(X_train, y_train)
+    results['XGBoost'] = xgb.score(X_test, y_test)
+    print(f"XGBoost: {results['XGBoost']:.4f}")
     
-    predictions = np.array(predictions)
+    # Create comparison plot
+    plt.figure(figsize=(12, 8))
+    methods = list(results.keys())
+    accuracies = list(results.values())
     
-    # Calculate bias and variance
-    avg_predictions = np.mean(predictions, axis=0)
-    bias = np.mean((avg_predictions - y_test) ** 2)
-    variance = np.mean(np.var(predictions, axis=0))
+    colors = ['lightblue' if 'Ensemble' not in method else 'lightcoral' 
+             for method in methods]
     
-    return bias, variance
+    bars = plt.barh(methods, accuracies, color=colors, alpha=0.7)
+    plt.xlabel('Accuracy')
+    plt.title('Comparison of Ensemble Methods vs Individual Models')
+    plt.xlim(0, 1)
+    
+    # Add value labels on bars
+    for bar, accuracy in zip(bars, accuracies):
+        plt.text(bar.get_width() - 0.05, bar.get_y() + bar.get_height()/2, 
+                f'{accuracy:.4f}', ha='right', va='center', color='black', fontweight='bold')
+    
+    plt.tight_layout()
+    plt.show()
+    
+    # Print summary
+    best_method = max(results, key=results.get)
+    worst_method = min(results, key=results.get)
+    
+    print(f"\nSUMMARY:")
+    print(f"Best Performing Method: {best_method} ({results[best_method]:.4f})")
+    print(f"Worst Performing Method: {worst_method} ({results[worst_method]:.4f})")
+    print(f"Range: {results[best_method] - results[worst_method]:.4f}")
+    
+    return results
 
-from sklearn.base import clone
+# Run comprehensive comparison
+ensemble_results = ensemble_comparison()
 
-# Calculate bias and variance for individual models and voting classifier
-models_bv = {
-    'Decision Tree': DecisionTreeClassifier(random_state=42),
-    'KNN': KNeighborsClassifier(),
-    'Random Forest': RandomForestClassifier(n_estimators=50, random_state=42),
-    'XGBoost': XGBClassifier(n_estimators=50, random_state=42),
-    'Voting Classifier': VotingClassifier(estimators=models_task2, voting='soft')
-}
 
-bias_variance_results = {}
 
-print("\nCalculating Bias and Variance for models...")
-for name, model in models_bv.items():
-    bias, variance = calculate_bias_variance(
-        model, X_train_final_2, X_test_2, y_train_final_2, y_test_2, n_iterations=50
-    )
-    bias_variance_results[name] = {'bias': bias, 'variance': variance}
-    print(f"{name}: Bias = {bias:.4f}, Variance = {variance:.4f}")
-
-# Plot bias-variance tradeoff
-plt.figure(figsize=(12, 8))
-for name, results in bias_variance_results.items():
-    plt.scatter(results['bias'], results['variance'], label=name, s=100)
-    plt.annotate(name, (results['bias'], results['variance']), 
-                xytext=(5, 5), textcoords='offset points')
-
-plt.xlabel('Bias')
-plt.ylabel('Variance')
-plt.title('Bias-Variance Tradeoff for Different Models')
-plt.legend()
-plt.grid(True, alpha=0.3)
-plt.tight_layout()
-plt.show()
-
-# =============================================================================
-# TASK 3: VOTING CLASSIFIER WITH DIFFERENT FEATURES
-# =============================================================================
-
-print("\n" + "=" * 70)
-print("TASK 3: VOTING CLASSIFIER WITH restEcg AND Chol")
-print("=" * 70)
-
-# Extract different two features
-X_features_3 = df_scaled[['restecg', 'chol']]
-y = df_scaled['Label']
-
-# Split the data
-X_train_3, X_test_3, y_train_3, y_test_3 = train_test_split(
-    X_features_3, y, test_size=0.2, random_state=0, stratify=y
-)
-
-X_train_final_3, X_val_3, y_train_final_3, y_val_3 = train_test_split(
-    X_train_3, y_train_3, test_size=0.3, random_state=0, stratify=y_train_3
-)
-
-print(f"Training set shape with features (restecg, chol): {X_train_final_3.shape}")
-
-# Define models for this task
-rf_model = RandomForestClassifier(n_estimators=100, random_state=42)
-ada_model = AdaBoostClassifier(n_estimators=100, random_state=42)
-
-# Train individual models
-print("\nTraining individual models...")
-rf_model.fit(X_train_final_3, y_train_final_3)
-ada_model.fit(X_train_final_3, y_train_final_3)
-
-# Individual model accuracies
-rf_train_acc = rf_model.score(X_train_final_3, y_train_final_3)
-rf_test_acc = rf_model.score(X_test_3, y_test_3)
-
-ada_train_acc = ada_model.score(X_train_final_3, y_train_final_3)
-ada_test_acc = ada_model.score(X_test_3, y_test_3)
-
-print(f"Random Forest - Train: {rf_train_acc * 100:.2f}%, Test: {rf_test_acc * 100:.2f}%")
-print(f"AdaBoost - Train: {ada_train_acc * 100:.2f}%, Test: {ada_test_acc * 100:.2f}%")
-
-# Voting Classifier with RF and AdaBoost
-print("\nVoting Classifier (Random Forest + AdaBoost):")
-voting_clf_3 = VotingClassifier(
-    estimators=[('rf', rf_model), ('ada', ada_model)],
-    voting='soft'
-)
-voting_clf_3.fit(X_train_final_3, y_train_final_3)
-voting_train_acc = voting_clf_3.score(X_train_final_3, y_train_final_3)
-voting_test_acc = voting_clf_3.score(X_test_3, y_test_3)
-
-print(f"Voting Classifier - Train: {voting_train_acc * 100:.2f}%, Test: {voting_test_acc * 100:.2f}%")
-
-# Plot accuracy comparison
-models_names = ['Random Forest', 'AdaBoost', 'Voting Ensemble']
-train_accuracies = [rf_train_acc, ada_train_acc, voting_train_acc]
-test_accuracies = [rf_test_acc, ada_test_acc, voting_test_acc]
-
-x_pos = np.arange(len(models_names))
-
-plt.figure(figsize=(10, 6))
-bar_width = 0.35
-
-plt.bar(x_pos - bar_width/2, train_accuracies, bar_width, 
-        label='Training Accuracy', alpha=0.7, color='blue')
-plt.bar(x_pos + bar_width/2, test_accuracies, bar_width, 
-        label='Testing Accuracy', alpha=0.7, color='red')
-
-plt.xlabel('Models')
-plt.ylabel('Accuracy')
-plt.title('Training vs Testing Accuracy: Individual Models vs Ensemble')
-plt.xticks(x_pos, models_names)
-plt.legend()
-plt.grid(axis='y', alpha=0.3)
-plt.ylim(0, 1)
-plt.tight_layout()
-plt.show()
-
-# =============================================================================
-# COMPREHENSIVE RESULTS SUMMARY
-# =============================================================================
-
-print("\n" + "=" * 70)
-print("COMPREHENSIVE RESULTS SUMMARY")
-print("=" * 70)
-
-print("\nTASK 1 - Individual Algorithm Performance:")
-print("-" * 50)
-for model_name, result in results.items():
-    print(f"{model_name}:")
-    print(f"  Training Accuracy: {result['Training Accuracy'] * 100:.2f}%")
-    print(f"  Testing Accuracy: {result['Testing Accuracy'] * 100:.2f}%")
-
-print("\nTASK 2 - Voting Classifier Results:")
-print("-" * 50)
-print(f"Best Voting Type: {best_voting}")
-print(f"Best Weights: {best_weights}")
-print(f"Best Accuracy with 2 features: {best_accuracy * 100:.2f}%")
-
-print("\nTASK 3 - Ensemble vs Individual Models:")
-print("-" * 50)
-print(f"Random Forest Test Accuracy: {rf_test_acc * 100:.2f}%")
-print(f"AdaBoost Test Accuracy: {ada_test_acc * 100:.2f}%")
-print(f"Voting Ensemble Test Accuracy: {voting_test_acc * 100:.2f}%")
-
-print(f"\nEnsemble improvement over best individual model: "
-      f"{(voting_test_acc - max(rf_test_acc, ada_test_acc)) * 100:.2f}%")
-
-print("\n" + "=" * 70)
-print("ENSEMBLE LEARNING LAB COMPLETED SUCCESSFULLY!")
-print("=" * 70)

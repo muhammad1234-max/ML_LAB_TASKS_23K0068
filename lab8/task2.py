@@ -6,7 +6,7 @@ import statsmodels.api as sm
 
 #load dataset
 df = pd.read_csv("electricity_bill_dataset.csv")   # <-- replace with your actual filename
-print("✅ Dataset Loaded Successfully\n")
+print(" Dataset Loaded Successfully\n")
 print(df.head())
 
 #identify categorical columns
